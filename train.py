@@ -6,6 +6,7 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import argparse
+import torch.backends.cudnn as cudnn
 import numpy as np
 from tqdm import tqdm
 import math
@@ -29,9 +30,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Different levels of perturbation for the adversary
 epsilons = [0.0, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
 frac = 1.0
-mc_samples_output = 100
-mc_samples_gradient = 100
-
 
 
 # Data transformations
@@ -60,6 +58,11 @@ learning_rate = args.lr
 
 # Training the model
 model = ResNet(args.typ, args.frac).to(device)
+
+net = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count())) # torch.nn.DataParallel 是 PyTorch 提供的一个包装器，它可以自动将模型复制到多个设备（GPU）上，并管理数据的拆分和合并。device_ids 参数指定了要使用的 GPU 设备的 ID 列表。range(torch.cuda.device_count()) 表示使用所有可用的 GPU 设备。
+cudnn.benchmark = True # cudnn.benchmark 设置为 True 后，cuDNN 会在开始时花费一些时间来选择最适合当前硬件的算法，从而在后续的迭代中获得更快的速度。
+
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=0.0001)
 valid_loss_min = np.Inf
