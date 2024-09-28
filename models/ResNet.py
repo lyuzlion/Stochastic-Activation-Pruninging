@@ -123,7 +123,7 @@ class ResNet(nn.Module):
 
         x = self.relu(x)
         if self.typ == 'sap':
-            relu1 = sap_unit(relu1, self.frac)
+            x = sap_unit(x, self.frac)
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
