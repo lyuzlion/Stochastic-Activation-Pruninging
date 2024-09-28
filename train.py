@@ -56,12 +56,13 @@ val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=1, shuf
 
 # Hyperparameters
 num_epochs = 150
-learning_rate = 0.5
+learning_rate = args.lr
 
 # Training the model
 model = ResNet(args.typ, args.frac).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=0.0001)
+valid_loss_min = np.Inf
 
 for epoch in tqdm(range(num_epochs)):
     model.train()
@@ -77,22 +78,27 @@ for epoch in tqdm(range(num_epochs)):
     # print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
     
     model.eval()
+    valid_loss = 0.0
     tot = 0
     correct = 0
     for i, (images, labels) in enumerate(val_loader):
         images, labels = images.to(device), labels.to(device)
         tot += labels.size(0)
         outputs = model(images)
-        
+        loss = criterion(outputs, labels)
+
+        valid_loss += loss.item() * images.size(0)
         y_pred = torch.argmax(outputs, dim=1)
 
         correct += (1 if labels[0].item() == y_pred else 0)
         
         
     print(f'\nEpoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Accuracy: {correct / tot}')
+    if valid_loss <= valid_loss_min:
+        print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(valid_loss_min, valid_loss))
+        torch.save(model.state_dict(), 'checkpoint/trained_model.pth')
+        valid_loss_min = valid_loss
 
-# Save model
-torch.save(model.state_dict(), './checkpoint/trained_model.pth')
 
 # Adversarial Iteration and Validation
 # def adversarial_examples(model, images, labels, epsilon):
